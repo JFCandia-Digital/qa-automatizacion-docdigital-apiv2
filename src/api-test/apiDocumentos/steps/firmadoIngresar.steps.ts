@@ -1,14 +1,13 @@
 import { Given } from "@cucumber/cucumber";
 import fs from "fs";
 import path from "path";
-import FormData from "form-data";
-import { sendPostMultipartRequest } from "../../../common/support/apiClient";
+import { sendPostRequestWithJson } from "../../../common/support/apiClient";
 import { attachReport, attachJsonToReport } from "../../../common/utils/utils";
 
 const FILES_DIR = path.join(process.cwd(), "src", "data", "files");
 
 /**
- * Carga un PDF de src/data/files y lo deja en this.pdfFirmado para el POST multipart.
+ * Carga un PDF de src/data/files y lo deja en this.pdfFirmado.
  */
 Given("que cargo el PDF firmado {string}", function (this: any, fileName: string) {
   const filePath = path.join(FILES_DIR, fileName);
@@ -20,9 +19,10 @@ Given("que cargo el PDF firmado {string}", function (this: any, fileName: string
 });
 
 /**
- * POST /documentos/firmado/ingresar (multipart). DESPACHA de verdad.
- * Destinatario OBLIGATORIO vía DESTINATARIO_ENTIDAD_ID (debe ser una entidad de
- * prueba, p. ej. Test 2019). Nunca una institución real.
+ * POST /documentos/firmado/ingresar (JSON + PDF en base64). DESPACHA de verdad.
+ * QA responde 415 a multipart/form-data (el endpoint consume application/json;
+ * el caso {} → 400 "El nombre del documento es obligatorio" lo confirma).
+ * Destinatario OBLIGATORIO vía DESTINATARIO_ENTIDAD_ID.
  */
 Given(
   "que ingreso y despacho el documento firmado a la entidad de prueba con token {string}",
@@ -38,34 +38,26 @@ Given(
     }
 
     const folio = `QA-${Date.now()}`;
-    const tipoId = process.env.TIPO_DOCUMENTO_ID || "1";
-    const campos = {
+    const pdfBase64 = fs.readFileSync(this.pdfFirmado.filePath).toString("base64");
+    const body = {
       nombre: "Documento QA automatizacion KE-Test2019",
-      tipo_id: tipoId,
-      entidad_id: destinatario,
+      tipo_id: Number(process.env.TIPO_DOCUMENTO_ID || "1"),
+      entidad_id: Number(destinatario),
       folio,
       materia: "Prueba de automatizacion QA (entidad de prueba -> Test 2019)",
+      documento: pdfBase64,
     };
-
-    const form = new FormData();
-    for (const [k, v] of Object.entries(campos)) {
-      form.append(k, String(v));
-    }
-    form.append("documento", fs.readFileSync(this.pdfFirmado.filePath), {
-      filename: this.pdfFirmado.fileName,
-      contentType: "application/pdf",
-    });
 
     attachJsonToReport(
       this,
-      { ...campos, archivo: this.pdfFirmado.fileName },
-      "RequestMultipartFirmado.json"
+      {
+        ...body,
+        documento: `<base64 ${this.pdfFirmado.fileName}, ${pdfBase64.length} chars>`,
+      },
+      "RequestJsonFirmado.json"
     );
 
-    await sendPostMultipartRequest("/documentos/firmado/ingresar", authType, form, {
-      ...campos,
-      archivo: this.pdfFirmado.fileName,
-    });
+    await sendPostRequestWithJson("/documentos/firmado/ingresar", authType, body);
     attachReport(this, "request");
     attachReport(this, "token");
   }

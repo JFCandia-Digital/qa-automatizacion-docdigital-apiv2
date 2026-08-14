@@ -6,8 +6,9 @@ Feature: POST /documentos/firmado/ingresar - Cargar documento firmado y despacha
 # == EXCLUSIVAMENTE a una entidad de prueba (Test 2019), NUNCA a instituciones
 # == reales. Está excluido de npm run apiTest.
 # ==
+# == Consume application/json (multipart → 415). PDF va en base64 en "documento".
 # == Requiere en .env: ACCESS_TOKEN (o CLIENT_ID/SECRET) y DESTINATARIO_ENTIDAD_ID
-# == (ID de Test 2019 en el ambiente). PDF: src/data/files/Firmado_por_ecert.pdf
+# == PDF: src/data/files/Firmado_por_ecert.pdf
 # =================================================================================
 
   # NOTA (anomalía, igual que /documentos/buscar): con un token de formato no-JWT

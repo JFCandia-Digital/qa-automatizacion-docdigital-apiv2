@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "Automatización QA de regresión — DocDigital APIv2",
   "scripts": {
-    "smoke": "cucumber-js \"src/api-test/tipos/features/getTiposDocumentos.feature\" --require \"src/common/hooks/hooks.ts\" --require \"src/api-test/**/steps/*.steps.ts\" --require-module ts-node/register --tags \"@Smoke\" -f summary",
+    "apiTest": "cucumber-js --tags \"@API\" -f summary",
+    "smoke": "cucumber-js --tags \"@Smoke\" -f summary",
+    "negativo": "cucumber-js --tags \"@Negativo\" -f summary",
     "tipos": "cucumber-js --tags \"@Tipos\" -f summary",
+    "tiposDocumentos": "cucumber-js --tags \"@TiposDocumentos\" -f summary",
+    "tiposVisaciones": "cucumber-js --tags \"@TiposVisaciones\" -f summary",
     "entidades": "cucumber-js --tags \"@Entidades\" -f summary",
     "usuarios": "cucumber-js --tags \"@Usuarios\" -f summary",
-    "documentos": "cucumber-js --tags \"@Documentos\" -f summary",
-    "apiTest": "cucumber-js --tags \"@API\" -f summary"
+    "documentos": "cucumber-js --tags \"@Documentos\" -f summary"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1",

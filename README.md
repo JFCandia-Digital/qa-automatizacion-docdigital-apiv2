@@ -191,9 +191,10 @@ y deja el **happy-path `@Mutacion`** implementado pero excluido por defecto.
 
 ## Contrato de errores en APIv2 (importante)
 
-A diferencia de APIv3, los errores `401` son **texto plano** (no objetos JSON):
+Los errores `401` son **texto plano** (no objetos JSON):
 - Sin token → `401 UNAUTHORIZED`
-- Token inválido/expirado → `No autorizado.`
+- Token inválido → `No autorizado.`
+- Token expirado → `Sesión expirada.`
 
 Las respuestas exitosas usan **snake_case** (`entidad_id`, `usuario_nombre`, `documento_principal`, …).
 

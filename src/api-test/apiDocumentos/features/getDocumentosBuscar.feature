@@ -38,5 +38,5 @@ Feature: GET /documentos/buscar - Búsqueda de documentos (E01)
 
     Examples:
       | tipo_auth | status | cuerpo           |
-      | expirado  |    401 | No autorizado.   |
+      | expirado  |    401 | Sesión expirada. |
       | nulo      |    401 | 401 UNAUTHORIZED |

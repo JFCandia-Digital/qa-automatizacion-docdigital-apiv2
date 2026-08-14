@@ -21,5 +21,5 @@ Feature: GET /documentos/{id}/estado - Estado e historial de un documento (E01)
     Examples:
       | tipo_auth | status | cuerpo           |
       | inválido  |    401 | No autorizado.   |
-      | expirado  |    401 | No autorizado.   |
+      | expirado  |    401 | Sesión expirada. |
       | nulo      |    401 | 401 UNAUTHORIZED |

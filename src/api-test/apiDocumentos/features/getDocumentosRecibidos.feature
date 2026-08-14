@@ -20,5 +20,5 @@ Feature: GET /documentos/recibidos - Documentos recibidos por la entidad (E01)
     Examples:
       | tipo_auth | status | cuerpo           |
       | inválido  |    401 | No autorizado.   |
-      | expirado  |    401 | No autorizado.   |
+      | expirado  |    401 | Sesión expirada. |
       | nulo      |    401 | 401 UNAUTHORIZED |

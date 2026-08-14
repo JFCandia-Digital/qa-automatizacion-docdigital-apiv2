@@ -27,7 +27,7 @@ Given("que cargo el PDF firmado {string}", function (this: any, fileName: string
 Given(
   "que ingreso y despacho el documento firmado a la entidad de prueba con token {string}",
   async function (this: any, authType: string) {
-    const destinatario = process.env.DESTINATARIO_ENTIDAD_ID;
+    const destinatario = (process.env.DESTINATARIO_ENTIDAD_ID || "").trim();
     if (!destinatario) {
       throw new Error(
         "Falta DESTINATARIO_ENTIDAD_ID en .env. Debe ser el ID de una entidad de PRUEBA (p. ej. Test 2019). Nunca una institución real."

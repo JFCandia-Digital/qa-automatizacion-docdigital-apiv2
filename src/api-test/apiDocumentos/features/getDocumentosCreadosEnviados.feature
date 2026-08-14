@@ -4,9 +4,10 @@ Feature: GET /documentos/creados/enviados - Documentos foliados/enviados (E01)
 # == Pruebas para el método GET /documentos/creados/enviados
 # =================================================================================
 
+  # Nota (QA): este listado requiere paginación; sin pageSize/pageNumber el backend responde 502.
   @RequiereCredenciales
   Scenario: Consultar documentos creados/enviados con token válido
-    Given que realizo una petición "GET" a "/documentos/creados/enviados" con token "válido"
+    Given que realizo una petición "GET" a "/documentos/creados/enviados?pageSize=10&pageNumber=1" con token "válido"
     Then el estado de la respuesta debe ser 200
     And el cuerpo de la respuesta debe tener la propiedad "result"
     And el cuerpo de la respuesta debe tener la estructura de éxito "JSON_RESPONSE_DOCUMENTOS_LISTA"

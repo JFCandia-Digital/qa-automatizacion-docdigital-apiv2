@@ -60,15 +60,15 @@ Given(
       );
     }
 
-    const folio = `QA-${Date.now()}`;
+    const folio = `QA-JFC-${Date.now()}`;
     const pdfBase64 = fs.readFileSync(this.pdfFirmado.filePath).toString("base64");
     const body = {
-      nombre: "Documento QA automatizacion KE-Test2019",
+      nombre: "Documento QA JFC automatizacion KE-Test2019",
       tipo_id: Number(process.env.TIPO_DOCUMENTO_ID || "1"),
       id_entidad_creadora: creadora,
       listado_id_entidades_destinatarias: [Number(destinatario)],
       folio,
-      materia: "Prueba de automatizacion QA (entidad de prueba -> Test 2019)",
+      materia: "JFC Prueba de automatizacion QA (PDI -> Armada)",
       documento: pdfBase64,
     };
 

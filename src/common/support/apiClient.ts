@@ -135,17 +135,38 @@ export async function sendPostRequestWithJson(endpoint: string, authType: string
 /**
  * Envía una petición POST multipart/form-data (p. ej. documento firmado + metadatos).
  * El PDF no se adjunta al reporte (solo el nombre del archivo y los campos).
+ *
+ * Axios 1.x le agrega `;charset=UTF-8` al Content-Type. Spring en QA responde
+ * 415 Unsupported Media Type si el charset va en el multipart (solo admite
+ * `multipart/form-data; boundary=...`).
  */
 export async function sendPostMultipartRequest(endpoint: string, authType: string, formData: FormData, reportableBody: any = null) {
-  const headers = { ...buildAuthConfig(authType), ...formData.getHeaders(), Accept: "application/json" };
+  const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
   const config: AxiosRequestConfig = {
     method: "POST",
     url: `${process.env.API_BASEURL}${endpoint}`,
-    headers,
+    headers: {
+      ...buildAuthConfig(authType),
+      Accept: "application/json",
+      "Content-Type": contentType,
+    },
     data: formData,
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
     validateStatus: () => true,
+    transformRequest: [
+      (data, headers) => {
+        if (headers) {
+          if (typeof (headers as any).set === "function") {
+            (headers as any).set("Content-Type", contentType, true);
+          } else {
+            (headers as any)["Content-Type"] = contentType;
+            delete (headers as any)["content-type"];
+          }
+        }
+        return data;
+      },
+    ],
   };
   await sendRequest(config, reportableBody);
 }

@@ -1,0 +1,23 @@
+{
+  "name": "qa-automatizacion-docdigital-apiv2",
+  "version": "1.0.0",
+  "description": "Automatización QA de regresión — DocDigital APIv2",
+  "scripts": {
+    "smoke": "cucumber-js \"src/api-test/tipos/features/getTiposDocumentos.feature\" --require \"src/common/hooks/hooks.ts\" --require \"src/api-test/**/steps/*.steps.ts\" --require-module ts-node/register --tags \"@Smoke\" -f summary",
+    "tipos": "cucumber-js --tags \"@Tipos\" -f summary",
+    "entidades": "cucumber-js --tags \"@Entidades\" -f summary",
+    "usuarios": "cucumber-js --tags \"@Usuarios\" -f summary",
+    "documentos": "cucumber-js --tags \"@Documentos\" -f summary",
+    "apiTest": "cucumber-js --tags \"@API\" -f summary"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.2.1",
+    "@types/node": "^22.13.10",
+    "dotenv": "^16.4.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "axios": "^1.8.3"
+  }
+}

@@ -54,6 +54,20 @@ DOC_ID_PRUEBA=
 > Los tokens de esta API duran ~1 hora. Si un escenario positivo devuelve 401,
 > probablemente el token expiró: renuévalo en `.env`.
 
+### Ambientes
+
+La suite es agnóstica del ambiente: solo cambia `API_BASEURL` (y credenciales) en `.env`.
+
+| Ambiente | `API_BASEURL` | Acceso | OAuth token |
+| --- | --- | --- | --- |
+| **QA** | `https://middleware.docv3.test.digital.gob.cl/api` | **Requiere VPN** | `POST /api/v3/oauth/token` |
+| demodoc | `https://api-demodoc.digital.gob.cl/api` | Público (sin VPN) | `POST /api/oauth/token` |
+
+Diferencias verificadas entre ambientes (la suite está alineada a **QA**):
+- **Token expirado**: en QA → `"Sesión expirada."`; en demodoc → `"No autorizado."`.
+- **Listados de documentos** (`/documentos/creados`, `/creados/enviados`, `/buscar`): en QA
+  **requieren paginación** (`pageSize`/`pageNumber`); sin ella el backend responde `502`.
+
 Para obtener un token con las credenciales OAuth:
 ```bash
 curl -u "CLIENT_ID:CLIENT_SECRET" -X POST "https://api-demodoc.digital.gob.cl/api/oauth/token"

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Automatización QA de regresión — DocDigital APIv2",
   "scripts": {
-    "apiTest": "cucumber-js --tags \"@API\" -f summary",
+    "apiTest": "cucumber-js --tags \"@API and not @Mutacion\" -f summary",
     "smoke": "cucumber-js --tags \"@Smoke\" -f summary",
     "negativo": "cucumber-js --tags \"@Negativo\" -f summary",
     "tipos": "cucumber-js --tags \"@Tipos\" -f summary",
@@ -11,7 +11,8 @@
     "tiposVisaciones": "cucumber-js --tags \"@TiposVisaciones\" -f summary",
     "entidades": "cucumber-js --tags \"@Entidades\" -f summary",
     "usuarios": "cucumber-js --tags \"@Usuarios\" -f summary",
-    "documentos": "cucumber-js --tags \"@Documentos\" -f summary"
+    "documentos": "cucumber-js --tags \"@Documentos and not @Mutacion\" -f summary",
+    "mutaciones": "cucumber-js --tags \"@Mutacion\" -f summary"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1",

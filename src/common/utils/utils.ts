@@ -16,6 +16,19 @@ export function getCredential(credential: string): string {
 }
 
 /**
+ * Reemplaza marcadores {VAR} en un endpoint por el valor de la variable de entorno VAR.
+ * Ej.: "/documentos/{DOC_ID_PRUEBA}/estado" -> "/documentos/123/estado" si DOC_ID_PRUEBA=123.
+ * Si la variable no está definida, deja el marcador tal cual (útil para casos negativos,
+ * donde la autenticación falla antes de procesar el id).
+ */
+export function resolveEndpoint(endpoint: string): string {
+  return endpoint.replace(/\{([A-Z0-9_]+)\}/g, (match, varName) => {
+    const value = process.env[varName];
+    return value !== undefined && value !== "" ? value : match;
+  });
+}
+
+/**
  * Obtiene un valor anidado por ruta con notación de puntos (p. ej. "result.0.id").
  * Reemplazo mínimo de lodash.get para no añadir dependencias.
  */

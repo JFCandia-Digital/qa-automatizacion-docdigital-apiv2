@@ -1,7 +1,7 @@
 import { Given, When, DataTable } from "@cucumber/cucumber";
-import { sendGetRequest, sendAuthRequest } from "../../common/support/apiClient";
+import { sendGetRequest, sendAuthRequest, sendDownloadRequest } from "../../common/support/apiClient";
 import { apiContext } from "../../common/support/apiContext";
-import { attachReport, attachJsonToReport, getCredential } from "../../common/utils/utils";
+import { attachReport, attachJsonToReport, getCredential, resolveEndpoint } from "../../common/utils/utils";
 
 /**
  * Solicita un token de acceso (OAuth client_credentials) y lo guarda en el contexto
@@ -37,7 +37,19 @@ Given(
     if (method.toUpperCase() !== "GET") {
       throw new Error(`Este step solo soporta el método GET. Se recibió: ${method}`);
     }
-    await sendGetRequest(endpoint, authType);
+    await sendGetRequest(resolveEndpoint(endpoint), authType);
+    attachReport(this, "request");
+    attachReport(this, "token");
+  }
+);
+
+/**
+ * Descarga el archivo de un endpoint binario (p. ej. /documentos/{id}/archivo/descargar).
+ */
+Given(
+  "que descargo el archivo de {string} con token {string}",
+  async function (this: any, endpoint: string, authType: string) {
+    await sendDownloadRequest(resolveEndpoint(endpoint), authType);
     attachReport(this, "request");
     attachReport(this, "token");
   }
@@ -110,8 +122,9 @@ When("ejecuto la petición GET", async function (this: any) {
     }
   });
 
+  const resolvedEndpoint = resolveEndpoint(requestEndpoint);
   const queryString = urlParams.toString();
-  const finalEndpoint = queryString ? `${requestEndpoint}?${queryString}` : requestEndpoint;
+  const finalEndpoint = queryString ? `${resolvedEndpoint}?${queryString}` : resolvedEndpoint;
 
   await sendGetRequest(finalEndpoint, requestAuthType);
 

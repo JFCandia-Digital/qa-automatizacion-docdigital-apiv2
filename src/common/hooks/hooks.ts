@@ -13,5 +13,7 @@ Before(function () {
   apiContext.requestAuthType = null;
   apiContext.requestQueryParams = new Map();
   apiContext.worldData = new Map();
+  apiContext.responseByteLength = undefined;
+  apiContext.responseContentType = undefined;
   apiContext.attachData = {};
 });

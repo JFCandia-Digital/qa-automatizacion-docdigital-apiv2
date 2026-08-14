@@ -65,11 +65,30 @@ Then(
  */
 Then("el cuerpo de la respuesta debe ser el texto {string}", function (this: any, expected: string) {
   attachReport(this, "response");
-  const actual = apiContext.response.data;
+  let actual = apiContext.response.data;
+  if (Buffer.isBuffer(actual)) actual = actual.toString("utf8");
   assert.strictEqual(
     typeof actual === "string" ? actual.trim() : actual,
     expected,
     `Cuerpo esperado: '${expected}', recibido: ${JSON.stringify(actual)}`
+  );
+});
+
+/**
+ * Valida que la respuesta sea un archivo descargable: contenido no vacío y
+ * un Content-Type que no sea JSON (indicando binario/octet-stream/pdf, etc.).
+ */
+Then("la respuesta debe ser un archivo descargable", function (this: any) {
+  const size = apiContext.responseByteLength ?? 0;
+  const ct = String(apiContext.responseContentType ?? "");
+  this.attach(`Archivo recibido: ${size} bytes, Content-Type: ${ct || "N/A"}`, {
+    mediaType: "text/plain",
+    fileName: "DownloadInfo.txt",
+  });
+  assert.ok(size > 0, `El archivo descargado está vacío (0 bytes). Content-Type: ${ct}`);
+  assert.ok(
+    !ct.includes("application/json"),
+    `Se esperaba contenido binario, pero el Content-Type es JSON: ${ct}`
   );
 });
 

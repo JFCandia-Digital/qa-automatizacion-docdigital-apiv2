@@ -102,3 +102,37 @@ export async function sendGetRequest(endpoint: string, authType: string) {
   };
   await sendRequest(config, null);
 }
+
+/**
+ * Descarga binaria (p. ej. GET /documentos/{id}/archivo/descargar).
+ * Usa Accept comodín (el endpoint responde 406 si se pide application/json) y
+ * responseType arraybuffer para recibir el archivo. En caso de error 401,
+ * el cuerpo (texto plano) se decodifica para poder validarlo con los steps de texto.
+ */
+export async function sendDownloadRequest(endpoint: string, authType: string) {
+  const config: AxiosRequestConfig = {
+    method: "GET",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: { ...buildAuthConfig(authType), Accept: "*/*" },
+    responseType: "arraybuffer",
+    validateStatus: () => true,
+  };
+  await sendRequest(config, null);
+
+  // Normaliza el cuerpo binario: guarda el tamaño y decodifica texto para errores.
+  const data = apiContext.response?.data;
+  if (data && (Buffer.isBuffer(data) || data instanceof ArrayBuffer || ArrayBuffer.isView(data))) {
+    const buf = Buffer.from(data as any);
+    apiContext.responseByteLength = buf.length;
+    apiContext.responseContentType = apiContext.response.headers?.["content-type"];
+    const ct = String(apiContext.responseContentType || "");
+    // Si no es binario (p. ej. text/plain o json de error), expón el cuerpo como texto.
+    if (ct.includes("text") || ct.includes("json") || ct === "") {
+      apiContext.response.data = buf.toString("utf8");
+      apiContext.attachData.responseBody = apiContext.response.data;
+    } else {
+      apiContext.response.data = buf;
+      apiContext.attachData.responseBody = `<binario ${buf.length} bytes, ${ct}>`;
+    }
+  }
+}

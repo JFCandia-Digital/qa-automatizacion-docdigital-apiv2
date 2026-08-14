@@ -4,8 +4,14 @@ Automatización QA de **regresión** para la **APIv2 de DocDigital**.
 
 Suite de pruebas de API construida con Cucumber + TypeScript + Axios. Toma como
 referencia de estilo/cobertura la suite de APIv3, adaptada al **contrato real de
-APIv2** (verificado contra el ambiente demodoc). Cubre los endpoints **vigentes**
-de solo lectura (los `[ENDPOINT DEPRECADO]`, como `/layouts/`, quedan fuera).
+APIv2** (verificado contra el ambiente demodoc). Cubre todos los endpoints
+**vigentes** de la tarjeta (lecturas GET + mutaciones PUT/POST). Los
+`[ENDPOINT DEPRECADO]`, como `/layouts/`, quedan fuera.
+
+> Las **mutaciones** (`PUT`/`POST`) que despachan o modifican datos están en
+> escenarios `@Mutacion`, **excluidos de las corridas por defecto** para no afectar
+> datos ni despachar a nadie. Sus **validaciones de entrada** (auth 401 y cuerpos
+> inválidos 400/404) sí se ejecutan siempre y son seguras (no mutan nada).
 
 ---
 
@@ -61,7 +67,7 @@ curl -u "CLIENT_ID:CLIENT_SECRET" -X POST "https://api-demodoc.digital.gob.cl/ap
 ```bash
 npm run smoke        # health-check rápido (negativos de auth; sin credenciales)
 npm run negativo     # todos los casos negativos (401); no requieren token válido
-npm run apiTest      # toda la suite (@API)
+npm run apiTest      # toda la suite SEGURA (@API, excluye @Mutacion) — no despacha nada
 
 # por área
 npm run tipos            # E05 Tipos (documentos + visaciones)
@@ -69,8 +75,15 @@ npm run tiposDocumentos  # solo GET /tipos/documentos/
 npm run tiposVisaciones  # solo GET /tipos/visaciones/
 npm run entidades        # E02 Entidades
 npm run usuarios         # E03 Usuarios
-npm run documentos       # E01 Documentos (GET)
+npm run documentos       # E01 Documentos (excluye @Mutacion)
+
+# SOLO ejecución manual y controlada (despacha/muta datos, KE <-> Test 2019):
+npm run mutaciones       # happy-path de PUT/POST de E01 (@Mutacion)
 ```
+
+> `npm run mutaciones` ejecuta los escenarios que **modifican/despachan** datos.
+> Úsalo solo de forma controlada, con `DOC_RECIBIDO_ID` de un documento recibido
+> desde otra entidad de prueba y destinatario **Test 2019** (nunca instituciones reales).
 
 Se genera un reporte HTML en `reports/report.html`.
 
@@ -81,7 +94,8 @@ Se genera un reporte HTML en `reports/report.html`.
 - `@API` — todos los escenarios de API.
 - `@Negativo` — validaciones de autenticación (token inválido/expirado/nulo → **401**). Corren en verde **sin credenciales**.
 - `@RequiereCredenciales` — escenarios positivos (200) y validación de parámetros (400). Requieren token válido en `.env`.
-- `@RequiereDatos` — además de token, necesitan un `DOC_ID_PRUEBA` (documento existente).
+- `@RequiereDatos` — además de token, necesitan un `DOC_ID_PRUEBA`/`DOC_RECIBIDO_ID` (documento existente).
+- `@Mutacion` — escenarios que **modifican o despachan** datos (PUT/POST). **Excluidos por defecto**; se corren solo con `npm run mutaciones`.
 - `@Smoke` — subconjunto rápido para verificar framework + conectividad.
 - Por área: `@Tipos`, `@Entidades`, `@Usuarios`, `@Documentos` (+ subtags por endpoint).
 
@@ -140,6 +154,22 @@ Todos los endpoints comparten dos tipos de comprobación:
   - Positivo: `200` + **archivo descargable** (valida tamaño > 0 y Content-Type no-JSON, p. ej. `application/pdf`). Se solicita con `Accept` comodín.
   - Negativos → `401`.
 
+### E01 — Documentos (mutaciones PUT/POST)
+Cada mutación valida **auth** (401) y **entrada** (400/404) de forma segura (no muta),
+y deja el **happy-path `@Mutacion`** implementado pero excluido por defecto.
+- **`PUT /documentos/{id}/atributos-adicionales`** (`putAtributosAdicionales.feature`)
+  - Negativos → `401`. Validación: documento inexistente → `404 "Documento no encontrado"`.
+  - `@Mutacion`: actualizar atributos de un documento propio → `200` (requiere `DOC_ID_PRUEBA`).
+- **`PUT /documentos/recibidos/{id}/devolver`** (`putDevolver.feature`)
+  - Negativos → `401`. Validación: sin motivo → `400 "Motivo de rechazo..."`.
+  - `@Mutacion`: devolver un recibido desde Test 2019 → `200` (requiere `DOC_RECIBIDO_ID`).
+- **`PUT /documentos/recibidos/{id}/acusorecibo`** (`putAcusoRecibo.feature`)
+  - Negativos → `401`. Validación: sin doc en estado pendiente → `400 "...estado pendiente"`.
+  - `@Mutacion`: dar acuso a un recibido de prueba → `200` (requiere `DOC_RECIBIDO_ID`).
+- **`POST /documentos/firmado/ingresar`** (`postFirmadoIngresar.feature`)
+  - Negativo: sin token → `401`. Validación: cuerpo vacío → `400` (lista de campos obligatorios).
+  - `@Mutacion`: ingresar/despachar un firmado **a Test 2019** → `200` (requiere PDF firmado; **despacha**).
+
 ---
 
 ## Contrato de errores en APIv2 (importante)
@@ -178,8 +208,10 @@ src/
 
 ## Cobertura y fases
 
-- **Fase actual (lecturas / GET)**: E05 Tipos, E02 Entidades, E03 Usuarios y E01 GET Documentos — validada en verde.
-- **Fase siguiente (mutaciones E01)**: `PUT /documentos/{id}/atributos-adicionales`,
-  `PUT /documentos/recibidos/{id}/devolver`, `PUT /documentos/recibidos/{id}/acusorecibo`,
-  `POST /documentos/firmado/ingresar`. Se harán **entre entidades de prueba** (nunca hacia
-  instituciones reales), una vez definidos los datos/entidad destinataria.
+Cubre **todos los endpoints vigentes** de la tarjeta (E05, E03, E02, E01):
+
+- **Lecturas (GET)**: E05 Tipos, E02 Entidades, E03 Usuarios y E01 GET Documentos — validadas en verde.
+- **Mutaciones (PUT/POST de E01)**: auth + validaciones de entrada validadas en verde (seguras); el
+  **happy-path** (`@Mutacion`) queda implementado pero **excluido por defecto**, para ejecutarse
+  de forma controlada **entre entidades de prueba** (KE ↔ Test 2019), nunca hacia instituciones
+  reales, una vez definidos los datos (documento recibido de prueba y PDF firmado).

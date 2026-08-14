@@ -2,6 +2,7 @@ import { Given } from "@cucumber/cucumber";
 import fs from "fs";
 import path from "path";
 import { sendPostRequestWithJson } from "../../../common/support/apiClient";
+import { apiContext } from "../../../common/support/apiContext";
 import { attachReport, attachJsonToReport } from "../../../common/utils/utils";
 
 const FILES_DIR = path.join(process.cwd(), "src", "data", "files");
@@ -18,11 +19,24 @@ Given("que cargo el PDF firmado {string}", function (this: any, fileName: string
   attachJsonToReport(this, { fileName, filePath }, "PdfFirmado.json");
 });
 
+function entidadIdDesdeJwt(token: string | undefined): number | undefined {
+  if (!token) return undefined;
+  try {
+    const payloadB64 = token.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/");
+    if (!payloadB64) return undefined;
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64").toString("utf8"));
+    const id = payload?.acr?.entidadId;
+    const n = Number(id);
+    return Number.isFinite(n) ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * POST /documentos/firmado/ingresar (JSON + PDF en base64). DESPACHA de verdad.
- * QA responde 415 a multipart/form-data (el endpoint consume application/json;
- * el caso {} → 400 "El nombre del documento es obligatorio" lo confirma).
- * Destinatario OBLIGATORIO vía DESTINATARIO_ENTIDAD_ID.
+ * Contrato QA (Swagger): application/json con id_entidad_creadora y
+ * listado_id_entidades_destinatarias (multipart → 415; entidad_id → 400).
  */
 Given(
   "que ingreso y despacho el documento firmado a la entidad de prueba con token {string}",
@@ -37,12 +51,22 @@ Given(
       throw new Error('Falta el step "que cargo el PDF firmado ...".');
     }
 
+    const token = apiContext.token ?? process.env.ACCESS_TOKEN;
+    const creadora =
+      Number(process.env.ID_ENTIDAD_CREADORA || "") || entidadIdDesdeJwt(token);
+    if (!creadora) {
+      throw new Error(
+        "Falta ID_ENTIDAD_CREADORA en .env (o un ACCESS_TOKEN JWT con acr.entidadId). En QA PDI es 66."
+      );
+    }
+
     const folio = `QA-${Date.now()}`;
     const pdfBase64 = fs.readFileSync(this.pdfFirmado.filePath).toString("base64");
     const body = {
       nombre: "Documento QA automatizacion KE-Test2019",
       tipo_id: Number(process.env.TIPO_DOCUMENTO_ID || "1"),
-      entidad_id: Number(destinatario),
+      id_entidad_creadora: creadora,
+      listado_id_entidades_destinatarias: [Number(destinatario)],
       folio,
       materia: "Prueba de automatizacion QA (entidad de prueba -> Test 2019)",
       documento: pdfBase64,

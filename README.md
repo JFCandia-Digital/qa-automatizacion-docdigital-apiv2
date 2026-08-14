@@ -247,4 +247,5 @@ Cubre **todos los endpoints vigentes** de la tarjeta (E05, E03, E02, E01):
   **happy-path** (`@Mutacion`) queda implementado pero **excluido por defecto**, para ejecutarse
   de forma controlada **entre entidades de prueba** (nunca hacia instituciones reales).
   `POST /documentos/firmado/ingresar` usa un PDF de `src/data/files/` (p. ej. `Firmado_por_ecert.pdf`)
-  y **exige** `DESTINATARIO_ENTIDAD_ID` (ID de Test 2019). Se corre solo con `npm run mutaciones`.
+  en JSON (`documento` base64) con `id_entidad_creadora` y `listado_id_entidades_destinatarias`
+  (`DESTINATARIO_ENTIDAD_ID`). Se corre solo con `npm run mutaciones`.

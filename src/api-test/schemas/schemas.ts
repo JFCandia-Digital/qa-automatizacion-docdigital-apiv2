@@ -1,18 +1,17 @@
 /**
  * Estructuras de respuesta esperadas para la APIv2 (DocDigital).
  *
- * NOTA IMPORTANTE (APIv2 vs APIv3):
- * - Las estructuras de ÉXITO están inferidas del contrato del Swagger de APIv2 y del
- *   estilo de APIv3. Como su validación en verde requiere un token válido (aún pendiente
- *   de credenciales demodoc), deben CONFIRMARSE/ajustarse contra una respuesta 200 real.
- *   Por eso los escenarios positivos están etiquetados con @RequiereCredenciales.
- * - Los errores 401 de APIv2 NO son objetos JSON (como en v3) sino texto plano:
- *     · sin token   -> body "401 UNAUTHORIZED" (text/plain)
- *     · token malo  -> body "No autorizado."   (application/json, string)
- *   Por eso los errores se validan con steps de texto y no con estas estructuras.
+ * Estas estructuras fueron CONFIRMADAS contra respuestas 200 reales del ambiente
+ * demodoc (entidad de prueba). La APIv2 usa snake_case (p. ej. entidad_id,
+ * usuario_nombre, documento_principal), a diferencia de APIv3.
+ *
+ * Envoltura estándar: { status, message, count, timestamp, result } y, en los
+ * listados, además { total_count, total_pages, page }.
+ *
+ * Los errores 401 son texto plano (no JSON): "401 UNAUTHORIZED" (sin token) o
+ * "No autorizado." (token inválido/expirado); se validan con steps de texto.
  */
 
-// Envoltura estándar DocDigital (a confirmar contra respuesta real de v2).
 const baseResponse = {
   status: "number",
   message: "string",
@@ -20,74 +19,87 @@ const baseResponse = {
   timestamp: "string",
 };
 
-const baseResponsePaginado = {
-  ...baseResponse,
-  total_count: "number",
-  total_pages: "number",
-  page: "number",
+const paginacionOpcional = {
+  "total_count?": "number",
+  "total_pages?": "number",
+  "page?": "number",
 };
 
-const baseTipoDocumento = {
-  grupo: "string",
-  tiposDocumentoOficial: [
+// E05 - Tipos: result: [{ nombre, tipo_id }]
+const baseTipo = {
+  nombre: "string",
+  tipo_id: "number",
+};
+
+// E02 - Entidades: result item
+const baseEntidad = {
+  entidad_id: "number",
+  entidad_nombre: "string",
+  "entidad_padre_id?": "number",
+  "organismo?": {
+    organismo_id: "number",
+    organismo_nombre: "string",
+  },
+};
+
+// E03 - Usuarios: result item (campos no siempre presentes van como opcionales)
+const baseUsuario = {
+  usuario_id: "number",
+  usuario_nombre: "string",
+  entidad_id: "number",
+  "usuario_run?": "string",
+  "usuario_email?": "string",
+  "usuario_cargo?": "string",
+  "entidad_nombre?": "string",
+  "organismo_id?": "number",
+  "organismo_nombre?": "string",
+};
+
+// E01 - Documentos: item de listado (recibidos/creados/enviados/buscar)
+const baseDocumentoItem = {
+  solicitud_id: "number",
+  documento_principal: {
+    documento_id: "number",
+  },
+};
+
+// E01 - Documento por id
+const baseDocumento = {
+  solicitud_id: "number",
+  documento_principal: {
+    documento_id: "number",
+    materia: "string",
+    nombre_archivo: "string",
+  },
+};
+
+// E01 - Estado/historial de un documento
+const baseDocumentoEstado = {
+  documento_id: "number",
+  documento_estado: "string",
+  documento_estado_fecha: "string",
+  documento_historial: [
     {
-      id: "number",
-      descripcion: "string",
+      fecha: "string",
+      evento: "string",
     },
   ],
 };
 
-const baseTipoVisacion = {
-  id: "number",
-  descripcion: "string",
-};
-
-const baseEntidad = {
-  entidadId: "number",
-  entidadNombre: "string",
-  isPrincipal: "boolean",
-  sigla: "string",
-  isActiva: "boolean",
-};
-
-const baseUsuario = {
-  usuarioId: "number",
-  entidadId: "number",
-  entidadNombre: "string",
-  usuarioRun: "string",
-  nombreCompleto: "string",
-  correoInstitucional: "string",
-  usuarioCargo: "string",
-};
-
 export const successStructures = {
-  JSON_RESPONSE_RESULT_SIN_DATOS: {
-    ...baseResponsePaginado,
-    result: [],
-  },
+  // E05 - Tipos
+  JSON_RESPONSE_TIPO_DOCUMENTO: { ...baseResponse, result: [baseTipo] },
+  JSON_RESPONSE_TIPO_VISACION: { ...baseResponse, result: [baseTipo] },
 
-  JSON_RESPONSE_TIPO_DOCUMENTO: {
-    ...baseResponse,
-    result: [baseTipoDocumento],
-  },
+  // E02 - Entidades (result es array, también en /entidades/token)
+  JSON_RESPONSE_ENTIDAD_TOKEN: { ...baseResponse, result: [baseEntidad] },
+  JSON_RESPONSE_ENTIDADES: { ...baseResponse, ...paginacionOpcional, result: [baseEntidad] },
 
-  JSON_RESPONSE_TIPO_VISACION: {
-    ...baseResponse,
-    result: [baseTipoVisacion],
-  },
+  // E03 - Usuarios
+  JSON_RESPONSE_USUARIOS: { ...baseResponse, ...paginacionOpcional, result: [baseUsuario] },
 
-  JSON_RESPONSE_ENTIDAD_TOKEN: {
-    ...baseResponse,
-    result: baseEntidad,
-  },
-
-  JSON_RESPONSE_ENTIDADES: {
-    ...baseResponsePaginado,
-    result: [baseEntidad],
-  },
-
-  JSON_RESPONSE_USUARIOS: {
-    ...baseResponsePaginado,
-    result: [baseUsuario],
-  },
+  // E01 - Documentos
+  JSON_RESPONSE_DOCUMENTOS_LISTA: { ...baseResponse, ...paginacionOpcional, result: [baseDocumentoItem] },
+  JSON_RESPONSE_DOCUMENTO: { ...baseResponse, result: baseDocumento },
+  JSON_RESPONSE_DOCUMENTO_ESTADO: { ...baseResponse, result: baseDocumentoEstado },
 };

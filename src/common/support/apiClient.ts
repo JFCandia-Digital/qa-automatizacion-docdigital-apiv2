@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig } from "axios";
+import FormData from "form-data";
 import { apiContext } from "./apiContext";
 import { logApiResponse } from "./logger";
+import { oauthTokenUrl } from "./oauth";
 
 /**
  * Token de ejemplo YA EXPIRADO, reutilizado para el caso de autenticación "expirado".
@@ -80,7 +82,7 @@ async function sendRequest(config: AxiosRequestConfig, requestBody: any = null) 
 export async function sendAuthRequest(clientId: string, clientSecret: string) {
   const config: AxiosRequestConfig = {
     method: "POST",
-    url: `${process.env.API_BASEURL}/oauth/token`,
+    url: oauthTokenUrl(),
     auth: { username: clientId, password: clientSecret },
     data: null,
     validateStatus: () => true,
@@ -101,4 +103,102 @@ export async function sendGetRequest(endpoint: string, authType: string) {
     validateStatus: () => true,
   };
   await sendRequest(config, null);
+}
+
+/**
+ * Envía una petición PUT con cuerpo JSON.
+ */
+export async function sendPutRequest(endpoint: string, authType: string, jsonData: any = null) {
+  const config: AxiosRequestConfig = {
+    method: "PUT",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: { ...buildAuthConfig(authType), "Content-Type": "application/json", Accept: "application/json" },
+    data: jsonData,
+    validateStatus: () => true,
+  };
+  await sendRequest(config, jsonData);
+}
+
+/**
+ * Envía una petición POST con cuerpo JSON.
+ */
+export async function sendPostRequestWithJson(endpoint: string, authType: string, jsonData: any = null) {
+  const config: AxiosRequestConfig = {
+    method: "POST",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: { ...buildAuthConfig(authType), "Content-Type": "application/json", Accept: "application/json" },
+    data: jsonData,
+    validateStatus: () => true,
+  };
+  await sendRequest(config, jsonData);
+}
+
+/**
+ * Envía una petición POST multipart/form-data (p. ej. documento firmado + metadatos).
+ * El PDF no se adjunta al reporte (solo el nombre del archivo y los campos).
+ *
+ * No pasamos la instancia de `form-data` a Axios: Axios detecta `getHeaders()` y
+ * vuelve a poner `multipart/form-data;boundary=...;charset=UTF-8`. Spring QA
+ * responde 415. Mandamos un Buffer con Content-Type solo `boundary`, sin charset.
+ */
+export async function sendPostMultipartRequest(endpoint: string, authType: string, formData: FormData, reportableBody: any = null) {
+  const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
+  const body = formData.getBuffer();
+  const config: AxiosRequestConfig = {
+    method: "POST",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: {
+      ...buildAuthConfig(authType),
+      Accept: "application/json",
+      "Content-Type": contentType,
+      "Content-Length": String(body.length),
+    },
+    data: body,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    validateStatus: () => true,
+    transformRequest: [
+      (data, headers) => {
+        if (headers && typeof (headers as any).set === "function") {
+          (headers as any).set("Content-Type", contentType, true);
+        }
+        return data;
+      },
+    ],
+  };
+  await sendRequest(config, reportableBody);
+}
+
+/**
+ * Descarga binaria (p. ej. GET /documentos/{id}/archivo/descargar).
+ * Usa Accept comodín (el endpoint responde 406 si se pide application/json) y
+ * responseType arraybuffer para recibir el archivo. En caso de error 401,
+ * el cuerpo (texto plano) se decodifica para poder validarlo con los steps de texto.
+ */
+export async function sendDownloadRequest(endpoint: string, authType: string) {
+  const config: AxiosRequestConfig = {
+    method: "GET",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: { ...buildAuthConfig(authType), Accept: "*/*" },
+    responseType: "arraybuffer",
+    validateStatus: () => true,
+  };
+  await sendRequest(config, null);
+
+  // Normaliza el cuerpo binario: guarda el tamaño y decodifica texto para errores.
+  const data = apiContext.response?.data;
+  if (data && (Buffer.isBuffer(data) || data instanceof ArrayBuffer || ArrayBuffer.isView(data))) {
+    const buf = Buffer.from(data as any);
+    apiContext.responseByteLength = buf.length;
+    apiContext.responseContentType = apiContext.response.headers?.["content-type"];
+    const ct = String(apiContext.responseContentType || "");
+    // Si no es binario (p. ej. text/plain o json de error), expón el cuerpo como texto.
+    if (ct.includes("text") || ct.includes("json") || ct === "") {
+      apiContext.response.data = buf.toString("utf8");
+      apiContext.attachData.responseBody = apiContext.response.data;
+    } else {
+      apiContext.response.data = buf;
+      apiContext.attachData.responseBody = `<binario ${buf.length} bytes, ${ct}>`;
+    }
+  }
 }

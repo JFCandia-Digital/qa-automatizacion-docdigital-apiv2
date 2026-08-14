@@ -1,19 +1,19 @@
-@API @Tipos @TiposDocumentos
-Feature: GET /tipos/documentos/ - Consulta de tipos de documentos (E05)
+@API @Documentos @DocumentosRecibidos
+Feature: GET /documentos/recibidos - Documentos recibidos por la entidad (E01)
 # =================================================================================
-# == Pruebas para el método GET /tipos/documentos/
+# == Pruebas para el método GET /documentos/recibidos
 # =================================================================================
 
   @RequiereCredenciales
-  Scenario: Consultar tipos de documentos con token válido
-    Given que realizo una petición "GET" a "/tipos/documentos/" con token "válido"
+  Scenario: Consultar documentos recibidos con token válido
+    Given que realizo una petición "GET" a "/documentos/recibidos" con token "válido"
     Then el estado de la respuesta debe ser 200
     And el cuerpo de la respuesta debe tener la propiedad "result"
-    And el cuerpo de la respuesta debe tener la estructura de éxito "JSON_RESPONSE_TIPO_DOCUMENTO"
+    And el cuerpo de la respuesta debe tener la estructura de éxito "JSON_RESPONSE_DOCUMENTOS_LISTA"
 
-  @Negativo @Smoke
-  Scenario Outline: Validar "GET" - "/tipos/documentos/" con distintos token
-    Given que realizo una petición "GET" a "/tipos/documentos/" con token "<tipo_auth>"
+  @Negativo
+  Scenario Outline: Validar "GET" - "/documentos/recibidos" con distintos token
+    Given que realizo una petición "GET" a "/documentos/recibidos" con token "<tipo_auth>"
     Then el estado de la respuesta debe ser <status>
     And el cuerpo de la respuesta debe ser el texto "<cuerpo>"
 

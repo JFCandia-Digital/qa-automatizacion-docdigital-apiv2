@@ -1,7 +1,13 @@
 import { Given, When, DataTable } from "@cucumber/cucumber";
-import { sendGetRequest, sendAuthRequest } from "../../common/support/apiClient";
+import {
+  sendGetRequest,
+  sendAuthRequest,
+  sendDownloadRequest,
+  sendPutRequest,
+  sendPostRequestWithJson,
+} from "../../common/support/apiClient";
 import { apiContext } from "../../common/support/apiContext";
-import { attachReport, attachJsonToReport, getCredential } from "../../common/utils/utils";
+import { attachReport, attachJsonToReport, getCredential, resolveEndpoint } from "../../common/utils/utils";
 
 /**
  * Solicita un token de acceso (OAuth client_credentials) y lo guarda en el contexto
@@ -37,7 +43,49 @@ Given(
     if (method.toUpperCase() !== "GET") {
       throw new Error(`Este step solo soporta el método GET. Se recibió: ${method}`);
     }
-    await sendGetRequest(endpoint, authType);
+    await sendGetRequest(resolveEndpoint(endpoint), authType);
+    attachReport(this, "request");
+    attachReport(this, "token");
+  }
+);
+
+/**
+ * Envía una petición PUT o POST con cuerpo JSON (DocString del feature).
+ * Soporta {VAR} en el endpoint (resueltos por variable de entorno).
+ */
+Given(
+  "que envío una petición {string} a {string} con token {string} y el cuerpo:",
+  async function (this: any, method: string, endpoint: string, authType: string, docString: string) {
+    const m = method.toUpperCase();
+    let body: any = null;
+    const raw = (docString || "").trim();
+    if (raw) {
+      try {
+        body = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(`El cuerpo del feature no es JSON válido: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    const ep = resolveEndpoint(endpoint);
+    if (m === "PUT") {
+      await sendPutRequest(ep, authType, body);
+    } else if (m === "POST") {
+      await sendPostRequestWithJson(ep, authType, body);
+    } else {
+      throw new Error(`Este step solo soporta PUT o POST. Se recibió: ${method}`);
+    }
+    attachReport(this, "request");
+    attachReport(this, "token");
+  }
+);
+
+/**
+ * Descarga el archivo de un endpoint binario (p. ej. /documentos/{id}/archivo/descargar).
+ */
+Given(
+  "que descargo el archivo de {string} con token {string}",
+  async function (this: any, endpoint: string, authType: string) {
+    await sendDownloadRequest(resolveEndpoint(endpoint), authType);
     attachReport(this, "request");
     attachReport(this, "token");
   }
@@ -110,8 +158,9 @@ When("ejecuto la petición GET", async function (this: any) {
     }
   });
 
+  const resolvedEndpoint = resolveEndpoint(requestEndpoint);
   const queryString = urlParams.toString();
-  const finalEndpoint = queryString ? `${requestEndpoint}?${queryString}` : requestEndpoint;
+  const finalEndpoint = queryString ? `${resolvedEndpoint}?${queryString}` : resolvedEndpoint;
 
   await sendGetRequest(finalEndpoint, requestAuthType);
 

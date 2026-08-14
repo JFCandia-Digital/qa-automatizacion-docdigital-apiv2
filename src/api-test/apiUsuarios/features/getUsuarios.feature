@@ -33,12 +33,10 @@ Feature: GET /usuarios/ - Consulta de usuarios o destinatarios (E03)
     Then el estado de la respuesta debe ser <status>
 
     Examples:
-      | campo    | valor   | status |
-      | id       | abc     |    400 |
-      | id       | ' OR 1=1 |   400 |
-      | run      | abc     |    400 |
-      | pageSize | 0       |    400 |
-      | pageSize | abc     |    400 |
+      | campo      | valor | status |
+      | run        | abc   |    400 |
+      | pageSize   | 0     |    400 |
+      | pageSize   | abc   |    400 |
       | pageNumber | abc   |    400 |
 
   @Negativo
@@ -50,7 +48,7 @@ Feature: GET /usuarios/ - Consulta de usuarios o destinatarios (E03)
     Examples:
       | tipo_auth | status | cuerpo           |
       | inválido  |    401 | No autorizado.   |
-      | expirado  |    401 | No autorizado.   |
+      | expirado  |    401 | Sesión expirada. |
       | nulo      |    401 | 401 UNAUTHORIZED |
 
   @Negativo

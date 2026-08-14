@@ -6,6 +6,8 @@ export const apiContext: {
   requestAuthType: string | null;
   requestQueryParams: Map<string, string | number | boolean>;
   worldData: Map<string, any>;
+  responseByteLength?: number;
+  responseContentType?: string;
   attachData: {
     method?: string;
     url?: string;

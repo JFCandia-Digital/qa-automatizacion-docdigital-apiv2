@@ -8,6 +8,11 @@ module.exports = {
     ],
     requireModule: ["ts-node/register"],
     formatOptions: { snippetInterface: "async-await" },
-    format: ["progress-bar", "summary", ["html", "reports/report.html"]],
+    format: [
+      "progress-bar",
+      "summary",
+      ["html", "reports/report.html"],
+      ["json", "reports/json/cucumber-report.json"],
+    ],
   },
 };

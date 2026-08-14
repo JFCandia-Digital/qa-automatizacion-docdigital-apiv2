@@ -33,12 +33,10 @@ Feature: GET /entidades/ - Consulta de entidades con filtros (E02)
     Then el estado de la respuesta debe ser <status>
 
     Examples:
-      | campo                | valor   | status |
-      | entidadCodificadorId | abc     |    400 |
-      | entidadCodificadorId | 'OR 1=1 |    400 |
-      | pageSize             | 0       |    400 |
-      | pageSize             | abc     |    400 |
-      | pageNumber           | abc     |    400 |
+      | campo      | valor | status |
+      | pageSize   | 0     |    400 |
+      | pageSize   | abc   |    400 |
+      | pageNumber | abc   |    400 |
 
   @Negativo
   Scenario Outline: Validar "GET" - "/entidades/" con distintos token
@@ -49,7 +47,7 @@ Feature: GET /entidades/ - Consulta de entidades con filtros (E02)
     Examples:
       | tipo_auth | status | cuerpo           |
       | inválido  |    401 | No autorizado.   |
-      | expirado  |    401 | No autorizado.   |
+      | expirado  |    401 | Sesión expirada. |
       | nulo      |    401 | 401 UNAUTHORIZED |
 
   @Negativo

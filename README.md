@@ -2,247 +2,324 @@
 
 Automatización QA de **regresión** para la **APIv2 de DocDigital**.
 
-Suite de pruebas de API construida con Cucumber + TypeScript + Axios. Toma como
-referencia de estilo/cobertura la suite de APIv3, adaptada al **contrato real de
-APIv2** (verificado contra el ambiente demodoc). Cubre todos los endpoints
-**vigentes** de la tarjeta (lecturas GET + mutaciones PUT/POST). Los
-`[ENDPOINT DEPRECADO]`, como `/layouts/`, quedan fuera.
+Cucumber + TypeScript + Axios. Cubre los endpoints **vigentes** de la tarjeta
+(E05 Tipos, E03 Usuarios, E02 Entidades, E01 Documentos GET + mutaciones PUT/POST).
+Quedan fuera los `[ENDPOINT DEPRECADO]` (p. ej. `/layouts/`).
 
-> Las **mutaciones** (`PUT`/`POST`) que despachan o modifican datos están en
-> escenarios `@Mutacion`, **excluidos de las corridas por defecto** para no afectar
-> datos ni despachar a nadie. Sus **validaciones de entrada** (auth 401 y cuerpos
-> inválidos 400/404) sí se ejecutan siempre y son seguras (no mutan nada).
+La suite está **alineada a QA** (`docv3.test`). El estilo sigue la suite APIv3.5,
+pero el contrato es el de APIv2 (snake_case, 401 en texto plano, paginación
+obligatoria en listados de documentos).
 
----
+> **`npm run apiTest` no despacha nada.** Los happy-path que crean o acusen
+> documentos van con tag `@Mutacion` y se corren a mano.
 
-## Stack
-- Node.js (probado con Node 22)
-- Cucumber (`@cucumber/cucumber`)
-- TypeScript (vía `ts-node`)
-- Axios
-
-## Requisitos
-- Node.js 18+.
-- Acceso de red al ambiente (por defecto `https://api-demodoc.digital.gob.cl/api`, público, sin VPN).
+Swagger QA (VPN):
+https://middleware.docv3.test.digital.gob.cl/api/swagger-ui/index.html
 
 ---
 
-## Setup
+## Stack y requisitos
+
+- Node.js 18+ (probado con 22)
+- Cucumber, TypeScript (`ts-node`), Axios
+- **QA requiere VPN** (host privado). demodoc es público, sin VPN.
 
 ```bash
 npm install
-cp .env.example .env      # Windows PowerShell: Copy-Item .env.example .env
+cp .env.example .env      # Windows: Copy-Item .env.example .env
 ```
 
-Completa el archivo **`.env`** (es local, está en `.gitignore`, no se sube).
+El `.env` es local (`.gitignore`). **No lo subas.**
 
-**Recomendado en QA:** llená `CLIENT_ID_PDI` / `CLIENT_SECRET_PDI` (y `CLIENT_ID_ARMADA` / `CLIENT_SECRET_ARMADA` para acuse/devolver). Dejá `ACCESS_TOKEN` **vacío**: el hook pide el JWT a `POST /api/v3/oauth/token` y lo renueva solo (~1 h).
+---
+
+## Autenticación (sin renovar JWT a mano)
+
+Los tokens duran ~1 h. **No hace falta pegar `ACCESS_TOKEN`.**
+
+Si están `CLIENT_ID_*` / `CLIENT_SECRET_*`, el hook pide el JWT solo:
+
+| Escenarios | Credencial | Token issuer QA |
+| --- | --- | --- |
+| Lecturas GET y `POST /firmado/ingresar` | `CLIENT_ID_PDI` | `POST /api/v3/oauth/token` |
+| `@AcusoRecibo` y `@Devolver` | `CLIENT_ID_ARMADA` | el mismo issuer |
+
+En consola vas a ver `[oauth] token PDI OK (~60 min)` (o `ARMADA`).
+
+`API_BASEURL` es **sin** `/v3`. El OAuth de QA sí va a `/api/v3/oauth/token`.
+demodoc usa `{API_BASEURL}/oauth/token`. Override: `OAUTH_TOKEN_URL`.
+
+Dejá `ACCESS_TOKEN=` vacío. Solo sirve como fallback (p. ej. bearer de Swagger)
+si no hay client_id.
+
+---
+
+## `.env` (QA)
 
 ```env
 API_BASEURL=https://middleware.docv3.test.digital.gob.cl/api
 ACCESS_TOKEN=
-CLIENT_ID_PDI=
+
+CLIENT_ID_PDI=          # uapi_66_…  origen PDI
 CLIENT_SECRET_PDI=
-CLIENT_ID_ARMADA=
+CLIENT_ID_ARMADA=       # uapi_210_… receptor Armada
 CLIENT_SECRET_ARMADA=
+
 DESTINATARIO_ENTIDAD_ID=210
-DOC_ID_PRUEBA=
+DOC_ID_PRUEBA=90104
 DOC_RECIBIDO_ID=
+TIPO_DOCUMENTO_ID=1
 ```
 
-`ACCESS_TOKEN=` solo hace falta si no tenés client_id (p. ej. un bearer pegado de Swagger).
+| Variable | Uso |
+| --- | --- |
+| `DESTINATARIO_ENTIDAD_ID` | Destino del `POST /firmado/ingresar` (Armada = **210**) |
+| `ID_ENTIDAD_CREADORA` | Origen del POST. Si está vacío, se lee `acr.entidadId` del JWT (PDI = **66**) |
+| `DOC_ID_PRUEBA` | `GET /documentos/{id}` (p. ej. el 90104 ingresado en QA) |
+| `DOC_RECIBIDO_ID` | Acuse/devolver. Tiene que estar **pendiente de acuse**. Un id ya acusido falla |
 
-### Ambientes
+Windows: si Cucumber dice que falta `DESTINATARIO_ENTIDAD_ID` con el valor en el archivo,
+el `.env` quedó en UTF-16 (Bloc de notas). Guardalo como UTF-8, o en esa sesión:
 
-La suite es agnóstica del ambiente: solo cambia `API_BASEURL` (y credenciales) en `.env`.
+```powershell
+$env:DESTINATARIO_ENTIDAD_ID="210"
+```
 
-| Ambiente | `API_BASEURL` | Acceso | OAuth token |
+---
+
+## Ambientes
+
+| Ambiente | `API_BASEURL` | Acceso | OAuth |
 | --- | --- | --- | --- |
-| **QA** | `https://middleware.docv3.test.digital.gob.cl/api` | **Requiere VPN** | `POST /api/v3/oauth/token` |
-| demodoc | `https://api-demodoc.digital.gob.cl/api` | Público (sin VPN) | `POST /api/oauth/token` |
+| **QA (objetivo)** | `https://middleware.docv3.test.digital.gob.cl/api` | VPN | `POST /api/v3/oauth/token` |
+| demodoc | `https://api-demodoc.digital.gob.cl/api` | Público | `POST /api/oauth/token` |
 
-Diferencias verificadas entre ambientes (la suite está alineada a **QA**):
-- **Token expirado**: en QA → `"Sesión expirada."`; en demodoc → `"No autorizado."`.
-- **Listados de documentos** (`/documentos/creados`, `/creados/enviados`, `/buscar`): en QA
-  **requieren paginación** (`pageSize`/`pageNumber`); sin ella el backend responde `502`.
+Diferencias verificadas (la suite sigue **QA**):
 
-Para forzar un token a mano (no hace falta si están los CLIENT_ID/SECRET):
-```bash
-curl -u "CLIENT_ID:CLIENT_SECRET" -X POST "https://middleware.docv3.test.digital.gob.cl/api/v3/oauth/token"
-```
+| Tema | QA | demodoc |
+| --- | --- | --- |
+| Token expirado | `"Sesión expirada."` | `"No autorizado."` |
+| Listados `/documentos/creados`, `/creados/enviados`, `/buscar` | Exigen `pageSize` y `pageNumber`; sin ellos **502** | Más permisivo |
+| `POST /firmado/ingresar` | **JSON** (multipart → **415**) | — |
+
+---
+
+## Entidades en QA (comprobadas)
+
+`GET /entidades/` con token PDI **no lista** las entidades de laboratorio (ids 1 y 2).
+Sí aparecen en `GET /usuarios/` y en destinatarios de documentos.
+
+| `entidad_id` | Nombre | Rol en esta suite |
+| --- | --- | --- |
+| **1** | Entidad TEST Agosto KE | Laboratorio (Patricia / QA) |
+| **2** | Entidad_Test_2019 | Laboratorio |
+| **66** | Policía de Investigaciones de Chile | Origen API (`uapi_66_`) |
+| **210** | Armada de Chile | Destino API (`uapi_210_`) |
+
+QA clona el catálogo de instituciones reales; el tráfico se queda en `docv3.test`
+(igual que la suite v3.5). Aun así **no** uses como `DOC_RECIBIDO_ID` documentos
+viejos de Patricia con cientos de CC a organismos reales (p. ej. 83377).
+
+El `client_id` trae el id: `uapi_{entidad_id}_…`.
 
 ---
 
 ## Ejecución
 
 ```bash
-npm run smoke        # health-check rápido (negativos de auth; sin credenciales)
-npm run negativo     # todos los casos negativos (401); no requieren token válido
-npm run apiTest      # toda la suite SEGURA (@API, excluye @Mutacion) — no despacha nada
+npm run smoke        # negativos de auth; sin credenciales
+npm run negativo     # todos los @Negativo (401)
+npm run apiTest      # suite SEGURA: @API and not @Mutacion — no despacha
 
-# por área
-npm run tipos            # E05 Tipos (documentos + visaciones)
-npm run tiposDocumentos  # solo GET /tipos/documentos/
-npm run tiposVisaciones  # solo GET /tipos/visaciones/
-npm run entidades        # E02 Entidades
-npm run usuarios         # E03 Usuarios
-npm run documentos       # E01 Documentos (excluye @Mutacion)
+npm run tipos
+npm run tiposDocumentos
+npm run tiposVisaciones
+npm run entidades
+npm run usuarios
+npm run documentos   # E01 GET, sin @Mutacion
 
-# SOLO ejecución manual y controlada (despacha/muta datos, KE <-> Test 2019):
-npm run mutaciones       # happy-path de PUT/POST de E01 (@Mutacion)
+npm run mutaciones   # SOLO a mano: ingresar / acuse / devolver / atributos
 ```
 
-> `npm run mutaciones` ejecuta los escenarios que **modifican/despachan** datos.
-> Úsalo solo de forma controlada, con `DOC_RECIBIDO_ID` de un documento recibido
-> desde otra entidad de prueba y destinatario **Test 2019** (nunca instituciones reales).
+```bash
+npx cucumber-js --tags "@FirmadoIngresar and @Mutacion"
+npx cucumber-js --tags "@AcusoRecibo and @Mutacion"
+npx cucumber-js --tags "@Devolver and @Mutacion"
+```
 
 ### Reportes
 
-Tras correr cualquier suite, genera un **reporte HTML amigable** (dashboard con
-gráficos, features y pasos):
-
 ```bash
-npm run report        # genera el reporte en reports/html/index.html
-npm run report:open   # genera y lo abre en el navegador
+npm run apiTest
+npm run report        # reports/html/index.html
+npm run report:open
 ```
 
-Ejemplo de flujo:
-```bash
-npm run apiTest       # ejecuta (produce reports/json/cucumber-report.json)
-npm run report:open   # genera y abre el dashboard
-```
-
-> También queda un HTML básico de Cucumber en `reports/report.html`. La carpeta
-> `reports/` está en `.gitignore` (no se versiona).
+También: `reports/report.html`. La carpeta `reports/` no se versiona.
 
 ---
 
-## Tags (etiquetas)
+## Mutaciones (happy-path)
 
-- `@API` — todos los escenarios de API.
-- `@Negativo` — validaciones de autenticación (token inválido/expirado/nulo → **401**). Corren en verde **sin credenciales**.
-- `@RequiereCredenciales` — escenarios positivos (200) y validación de parámetros (400). Requieren token válido en `.env`.
-- `@RequiereDatos` — además de token, necesitan un `DOC_ID_PRUEBA`/`DOC_RECIBIDO_ID` (documento existente).
-- `@Mutacion` — escenarios que **modifican o despachan** datos (PUT/POST). **Excluidos por defecto**; se corren solo con `npm run mutaciones`.
-- `@Smoke` — subconjunto rápido para verificar framework + conectividad.
-- Por área: `@Tipos`, `@Entidades`, `@Usuarios`, `@Documentos` (+ subtags por endpoint).
+Cada `@Mutacion` **cambia datos en QA**. No lo pongas en el default.
+
+### Circuito verificado (14-08-2026)
+
+1. **PDI** `POST /documentos/firmado/ingresar` → Armada **210**
+   - Documento **90104**, folio `QA-JFC-…`, materia con **JFC**
+   - Mail DocDigital: `no-reply@digital.gob.cl`
+2. **Armada** `PUT /documentos/recibidos/90104/acusorecibo` → `200` `{ completada: true }`
+
+El 90104 **ya tiene acuse**. No lo uses de nuevo en `DOC_RECIBIDO_ID`.
+Para otro acuse/devolver: ingresá un documento nuevo y acusá **ese** id.
+
+Nombre / materia / folio del ingresar llevan **JFC** para filtrar el mail.
+
+### Contrato `POST /documentos/firmado/ingresar`
+
+- `Content-Type: application/json` (multipart → 415)
+- PDF en **base64** en `documento` (`src/data/files/Firmado_por_ecert.pdf`)
+- Obligatorios (Swagger QA):
+
+```json
+{
+  "nombre": "Documento QA JFC …",
+  "tipo_id": 1,
+  "id_entidad_creadora": 66,
+  "listado_id_entidades_destinatarias": [210],
+  "folio": "QA-JFC-<timestamp>",
+  "materia": "JFC Prueba de automatizacion QA (PDI -> Armada)",
+  "documento": "<base64>"
+}
+```
+
+`entidad_id` **no** vale: responde `400 "El id de la entidad es obligatorio"`.
+
+Respuesta 200:
+
+```json
+{ "result": { "fecha_ingreso": "…", "id_documento": 90104, "id_solicitud": 90104, "anexos": [] } }
+```
+
+### Acuse / devolver
+
+Usan token **Armada** (hook). El id tiene que existir como recibido **pendiente**.
+`GET /documentos/{id}` con token Armada basta (el listado `/recibidos` pagina 275
+páginas y los nuevos no siempre están en la última).
+
+Acuse y devolver se pisan: un id acusido ya no está pendiente.
+
+### Atributos adicionales
+
+`PUT /documentos/{id}/atributos-adicionales` — body **mapa** `{ "clave": "valor" }`, no array.
+Puede responder **403** si el API no tiene permiso de escritura sobre ese documento.
+
+---
+
+## Tags
+
+| Tag | Qué |
+| --- | --- |
+| `@API` | Toda la suite API |
+| `@Negativo` | Auth 401; corre **sin** credenciales |
+| `@RequiereCredenciales` | 200 / 400 con token válido (OAuth automático) |
+| `@RequiereDatos` | Además `DOC_ID_PRUEBA` o `DOC_RECIBIDO_ID` |
+| `@Mutacion` | Despacha o muta. Fuera de `apiTest` |
+| `@Smoke` | Conectividad rápida |
+| Área | `@Tipos` `@Entidades` `@Usuarios` `@Documentos` + subtag de endpoint (`@FirmadoIngresar`, `@AcusoRecibo`, …) |
 
 ---
 
 ## Qué valida cada test
 
-Todos los endpoints comparten dos tipos de comprobación:
-- **Positiva** (con token válido): código `200`, presencia de `result` y **validación de estructura/tipos** de la respuesta contra un esquema esperado.
-- **Negativa** (autenticación): sin token → `401 "401 UNAUTHORIZED"`; token inválido/expirado → `401 "No autorizado."`.
+Común a todos:
+- **Positiva** (token válido): `200`, `result`, estructura/tipos (snake_case).
+- **Negativa**: sin token → `401 "401 UNAUTHORIZED"`; inválido → `401 "No autorizado."`;
+  expirado (QA) → `401 "Sesión expirada."`.
 
 ### E05 — Tipos
-- **`GET /tipos/documentos/`** (`getTiposDocumentos.feature`, `@Smoke`)
-  - Positivo: `200` + estructura `JSON_RESPONSE_TIPO_DOCUMENTO` (`result: [{ nombre, tipo_id }]`).
-  - Negativos: inválido/expirado/nulo → `401`.
-- **`GET /tipos/visaciones/`** (`getTiposVisaciones.feature`)
-  - Positivo: `200` + estructura `JSON_RESPONSE_TIPO_VISACION` (`result: [{ nombre, tipo_id }]`).
-  - Negativos → `401`.
+- `GET /tipos/documentos/` — `@Smoke`. `result: [{ nombre, tipo_id }]`.
+- `GET /tipos/visaciones/` — igual patrón.
 
 ### E02 — Entidades
-- **`GET /entidades/token`** (`getEntidadesToken.feature`) — entidades asociadas al token.
-  - Positivo: `200` + estructura `JSON_RESPONSE_ENTIDAD_TOKEN` (`result` es **array** de entidades).
-  - Negativos → `401`.
-- **`GET /entidades/`** (`getEntidades.feature`) — listado con filtros/paginación.
-  - Positivo: `200` + estructura `JSON_RESPONSE_ENTIDADES`.
-  - Paginación válida (`pageSize`, `pageNumber`) → `200`.
-  - Parámetros inválidos (`pageSize=0`, `pageSize=abc`, `pageNumber=abc`) → `400`.
-  - Negativos de auth → `401`.
-  - Prepara y ejecuta con parámetros pero **sin token** → `401` (valida el flujo preparar→parametrizar→ejecutar).
+- `GET /entidades/token` — entidades del token (`result` **array**). PDI → id 66.
+- `GET /entidades/` — listado + paginación. `pageSize`/`pageNumber` inválidos → 400.
+  Filtro `nombre` **no filtra** (texto se ignora, 200).
 
 ### E03 — Usuarios
-- **`GET /usuarios/`** (`getUsuarios.feature`) — usuarios/destinatarios con filtros/paginación.
-  - Positivo: `200` + estructura `JSON_RESPONSE_USUARIOS`.
-  - Paginación válida → `200`.
-  - Parámetros inválidos (`run=abc`, `pageSize=0`, `pageSize=abc`, `pageNumber=abc`) → `400`.
-  - Negativos de auth → `401`.
-  - Prepara y ejecuta con parámetros sin token → `401`.
+- `GET /usuarios/` — filtros/paginación. `run=abc` y paginación inválida → 400.
 
-### E01 — Documentos (solo GET en esta fase)
-- **`GET /documentos/recibidos`** (`getDocumentosRecibidos.feature`) — recibidos por la entidad.
-  - Positivo: `200` + `JSON_RESPONSE_DOCUMENTOS_LISTA` (`result: [{ solicitud_id, documento_principal: { documento_id } }]`).
-  - Negativos → `401`.
-- **`GET /documentos/creados`** (`getDocumentosCreados.feature`) — creados por la entidad. Igual patrón.
-- **`GET /documentos/creados/enviados`** (`getDocumentosCreadosEnviados.feature`) — foliados/enviados. Igual patrón.
-- **`GET /documentos/buscar`** (`getDocumentosBuscar.feature`) — búsqueda.
-  - Positivo: `200` + `JSON_RESPONSE_DOCUMENTOS_LISTA`.
-  - Paginación válida → `200`.
-  - Negativos: expirado/nulo → `401`. (El caso "token inválido" se omite por una anomalía documentada, ver abajo.)
-- **`GET /documentos/{id}`** (`getDocumentoPorId.feature`, `@RequiereDatos`) — documento por ID.
-  - Positivo: usa `DOC_ID_PRUEBA` → `200` + `JSON_RESPONSE_DOCUMENTO` (`result` objeto).
-  - Negativos: usan un id fijo (`1`) → `401`.
-- **`GET /documentos/{id}/estado`** (`getDocumentoEstado.feature`, `@RequiereDatos`) — estado e historial.
-  - Positivo: `200` + `JSON_RESPONSE_DOCUMENTO_ESTADO` (`result: { documento_id, documento_estado, documento_estado_fecha, documento_historial: [...] }`).
-  - Negativos → `401`.
-- **`GET /documentos/{id}/archivo/descargar`** (`getDocumentoArchivoDescargar.feature`, `@RequiereDatos`) — descarga del archivo (binario).
-  - Positivo: `200` + **archivo descargable** (valida tamaño > 0 y Content-Type no-JSON, p. ej. `application/pdf`). Se solicita con `Accept` comodín.
-  - Negativos → `401`.
+### E01 — GET Documentos
+- `GET /documentos/recibidos` | `/creados` | `/creados/enviados` | `/buscar`
+  — lista `[{ solicitud_id, documento_principal.documento_id }]`. En QA **con** `pageSize` y `pageNumber`.
+- `GET /documentos/{id}` — `DOC_ID_PRUEBA` → objeto.
+- `GET /documentos/{id}/estado` — estado + historial.
+- `GET /documentos/{id}/archivo/descargar` — binario (`Accept: */*`). Con `application/json` → **406**.
 
-### E01 — Documentos (mutaciones PUT/POST)
-Cada mutación valida **auth** (401) y **entrada** (400/404) de forma segura (no muta),
-y deja el **happy-path `@Mutacion`** implementado pero excluido por defecto.
-- **`PUT /documentos/{id}/atributos-adicionales`** (`putAtributosAdicionales.feature`)
-  - Negativos → `401`. Validación: documento inexistente → `404 "Documento no encontrado"`.
-  - `@Mutacion`: actualizar atributos de un documento propio → `200` (requiere `DOC_ID_PRUEBA`).
-- **`PUT /documentos/recibidos/{id}/devolver`** (`putDevolver.feature`)
-  - Negativos → `401`. Validación: sin motivo → `400 "Motivo de rechazo..."`.
-  - `@Mutacion`: devolver un recibido desde Test 2019 → `200` (requiere `DOC_RECIBIDO_ID`).
-- **`PUT /documentos/recibidos/{id}/acusorecibo`** (`putAcusoRecibo.feature`)
-  - Negativos → `401`. Validación: sin doc en estado pendiente → `400 "...estado pendiente"`.
-  - `@Mutacion`: dar acuso a un recibido de prueba → `200` (requiere `DOC_RECIBIDO_ID`).
-- **`POST /documentos/firmado/ingresar`** (`postFirmadoIngresar.feature`)
-  - Negativo: sin token → `401`. Validación: cuerpo vacío → `400` (lista de campos obligatorios).
-  - `@Mutacion`: ingresar/despachar un firmado **a Test 2019** → `200` (requiere PDF firmado; **despacha**).
+### E01 — Mutaciones
+Auth 401 + validación 400/404 **siempre** (no mutan). Happy-path solo `@Mutacion`:
+- `PUT /{id}/atributos-adicionales` — 404 si no existe.
+- `PUT /recibidos/{id}/devolver` — 400 sin motivo.
+- `PUT /recibidos/{id}/acusorecibo` — 400 si no está pendiente.
+- `POST /firmado/ingresar` — 400 cuerpo vacío (`El nombre del documento es obligatorio`).
 
 ---
 
-## Contrato de errores en APIv2 (importante)
+## Contrato de errores APIv2
 
-Los errores `401` son **texto plano** (no objetos JSON):
-- Sin token → `401 UNAUTHORIZED`
-- Token inválido → `No autorizado.`
-- Token expirado → `Sesión expirada.`
+Los **401 son texto plano**, no JSON.
 
-Las respuestas exitosas usan **snake_case** (`entidad_id`, `usuario_nombre`, `documento_principal`, …).
-
-## Hallazgos verificados (para reportar)
-
-- **`/documentos/{id}/archivo/descargar`** responde `406` si se pide `Accept: application/json`; hay que pedirlo con `Accept` comodín (por eso tiene cliente/steps de descarga propios).
-- **`/documentos/buscar` — posible bug de seguridad**: con un token de formato no-JWT (p. ej. `Bearer x`) responde `200` (valida solo la presencia del header), mientras que sin token responde `401` y con JWT expirado `401`.
-- **Validación de parámetros**: solo paginación y campos numéricos (`pageSize`, `pageNumber`, `run`) devuelven `400`; los filtros de texto no numéricos se ignoran (`200`).
+Respuestas OK: `{ status, message, count, timestamp, result }` y a veces
+`total_count`, `total_pages`, `page`. Campos en snake_case.
 
 ---
 
-## Estructura del proyecto
+## Hallazgos (para reportar / no re-descubrir)
+
+- **`GET /entidades/?nombre=…` no filtra.** `nombre=Test 2019` devuelve la página 1 de
+  instituciones reales. Buscar Test 2019 / KE en `/usuarios/` o en el documento
+  (`entidad_id` 1 y 2).
+- **`POST /firmado/ingresar` no es multipart.** Axios + `form-data` termina en 415
+  (`charset=UTF-8` / media type no registrado). Cuerpo JSON + PDF base64.
+- **`/documentos/buscar` y `POST /firmado/ingresar`**: bearer no-JWT (`Bearer x`)
+  a veces **no** da 401 y pasa a validar negocio (posible bug).
+- **`/archivo/descargar`**: 406 si `Accept: application/json`.
+- Validación 400 **determinista** solo en numéricos (`pageSize`, `pageNumber`, `run`).
+  Filtros de texto inválidos → 200.
+- Listado `/recibidos` de Armada: ~2700 ítems; un doc recién ingresado se ve
+  con `GET /documentos/{id}` aunque no aparezca en la última página.
+
+---
+
+## Estructura
 
 ```
 src/
 ├─ api-test/
-│  ├─ apiTipos/features/        # E05: getTiposDocumentos, getTiposVisaciones
-│  ├─ apiEntidades/features/    # E02: getEntidadesToken, getEntidades
-│  ├─ apiUsuarios/features/     # E03: getUsuarios
-│  ├─ apiDocumentos/features/   # E01 (GET): recibidos, creados, creados/enviados,
-│  │                            #            buscar, por id, estado, descargar
-│  ├─ genericSteps/             # steps reutilizables (petición + validación)
-│  └─ schemas/                  # estructuras de respuesta esperadas (snake_case)
+│  ├─ apiTipos/features/
+│  ├─ apiEntidades/features/
+│  ├─ apiUsuarios/features/
+│  ├─ apiDocumentos/features/     # GET + PUT/POST
+│  ├─ apiDocumentos/steps/        # firmadoIngresar (JSON + PDF)
+│  ├─ genericSteps/
+│  └─ schemas/
+├─ data/files/                    # PDFs (Firmado_por_ecert.pdf, …)
 └─ common/
-   ├─ hooks/hooks.ts            # reset de contexto + carga de .env
-   ├─ support/                  # apiClient (auth, GET, OAuth, descarga), apiContext, logger
-   └─ utils/                    # validación de estructura, resolveEndpoint, reportes
+   ├─ hooks/hooks.ts              # .env (UTF-8/UTF-16) + OAuth por escenario
+   ├─ support/apiClient.ts
+   ├─ support/oauth.ts            # cache JWT PDI/Armada
+   └─ utils/
 ```
 
-## Cobertura y fases
+---
 
-Cubre **todos los endpoints vigentes** de la tarjeta (E05, E03, E02, E01):
+## Cobertura
 
-- **Lecturas (GET)**: E05 Tipos, E02 Entidades, E03 Usuarios y E01 GET Documentos — validadas en verde.
-- **Mutaciones (PUT/POST de E01)**: auth + validaciones de entrada validadas en verde (seguras); el
-  **happy-path** (`@Mutacion`) queda implementado pero **excluido por defecto**, para ejecutarse
-  de forma controlada **entre entidades de prueba** (nunca hacia instituciones reales).
-  `POST /documentos/firmado/ingresar` usa un PDF de `src/data/files/` (p. ej. `Firmado_por_ecert.pdf`)
-  en JSON (`documento` base64) con `id_entidad_creadora` y `listado_id_entidades_destinatarias`
-  (`DESTINATARIO_ENTIDAD_ID`). Se corre solo con `npm run mutaciones`.
+| Fase | Estado en QA |
+| --- | --- |
+| Lecturas GET (E05, E02, E03, E01) | **72/72** (`apiTest`, 330 pasos) |
+| Mutaciones: validaciones 401/400 | Incluidas en `apiTest` (no mutan) |
+| `POST /firmado/ingresar` happy-path | **200** doc 90104 (PDI→Armada, mail JFC) |
+| `PUT …/acusorecibo` happy-path | **200** `completada: true` (token Armada) |
+| `PUT …/devolver` happy-path | Implementado; hace falta un recibido **pendiente** |
+| `PUT …/atributos-adicionales` happy-path | Implementado; puede 403 sin permiso de escritura |

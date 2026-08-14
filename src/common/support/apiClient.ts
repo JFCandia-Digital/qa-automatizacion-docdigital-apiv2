@@ -104,6 +104,34 @@ export async function sendGetRequest(endpoint: string, authType: string) {
 }
 
 /**
+ * Envía una petición PUT con cuerpo JSON.
+ */
+export async function sendPutRequest(endpoint: string, authType: string, jsonData: any = null) {
+  const config: AxiosRequestConfig = {
+    method: "PUT",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: { ...buildAuthConfig(authType), "Content-Type": "application/json", Accept: "application/json" },
+    data: jsonData,
+    validateStatus: () => true,
+  };
+  await sendRequest(config, jsonData);
+}
+
+/**
+ * Envía una petición POST con cuerpo JSON.
+ */
+export async function sendPostRequestWithJson(endpoint: string, authType: string, jsonData: any = null) {
+  const config: AxiosRequestConfig = {
+    method: "POST",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers: { ...buildAuthConfig(authType), "Content-Type": "application/json", Accept: "application/json" },
+    data: jsonData,
+    validateStatus: () => true,
+  };
+  await sendRequest(config, jsonData);
+}
+
+/**
  * Descarga binaria (p. ej. GET /documentos/{id}/archivo/descargar).
  * Usa Accept comodín (el endpoint responde 406 si se pide application/json) y
  * responseType arraybuffer para recibir el archivo. En caso de error 401,

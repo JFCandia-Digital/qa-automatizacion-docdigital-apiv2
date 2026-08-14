@@ -4,7 +4,10 @@ Feature: POST /documentos/firmado/ingresar - Cargar documento firmado y despacha
 # == Pruebas para el método POST /documentos/firmado/ingresar
 # == ¡ATENCIÓN! El happy-path @Mutacion DESPACHA una comunicación. Debe dirigirse
 # == EXCLUSIVAMENTE a una entidad de prueba (Test 2019), NUNCA a instituciones
-# == reales. Está excluido de npm run apiTest y requiere un PDF firmado válido.
+# == reales. Está excluido de npm run apiTest.
+# ==
+# == Requiere en .env: ACCESS_TOKEN (o CLIENT_ID/SECRET) y DESTINATARIO_ENTIDAD_ID
+# == (ID de Test 2019 en el ambiente). PDF: src/data/files/Firmado_por_ecert.pdf
 # =================================================================================
 
   # NOTA (anomalía, igual que /documentos/buscar): con un token de formato no-JWT
@@ -30,17 +33,7 @@ Feature: POST /documentos/firmado/ingresar - Cargar documento firmado y despacha
 
   @Mutacion @RequiereCredenciales @RequiereDatos
   Scenario: (Mutación) Ingresar y despachar un documento firmado a la entidad de prueba
-    # DESPACHA de verdad -> destinatario SOLO Test 2019. Requiere un PDF firmado válido
-    # (base64) y confirmar el esquema del cuerpo contra el contrato real antes de ejecutar.
-    Given que envío una petición "POST" a "/documentos/firmado/ingresar" con token "válido" y el cuerpo:
-      """
-      {
-        "nombre": "Documento QA automatizacion",
-        "tipo_id": 1,
-        "entidad_id": 2,
-        "folio": "QA-0001",
-        "materia": "Prueba de automatización QA (KE -> Test 2019)",
-        "documento_base64": "<PDF_FIRMADO_BASE64>"
-      }
-      """
+    # DESPACHA de verdad -> destinatario SOLO DESTINATARIO_ENTIDAD_ID (Test 2019).
+    Given que cargo el PDF firmado "Firmado_por_ecert.pdf"
+    And que ingreso y despacho el documento firmado a la entidad de prueba con token "válido"
     Then el estado de la respuesta debe ser 200

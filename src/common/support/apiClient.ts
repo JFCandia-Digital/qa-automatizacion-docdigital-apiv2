@@ -1,4 +1,5 @@
 import axios, { AxiosRequestConfig } from "axios";
+import FormData from "form-data";
 import { apiContext } from "./apiContext";
 import { logApiResponse } from "./logger";
 
@@ -129,6 +130,24 @@ export async function sendPostRequestWithJson(endpoint: string, authType: string
     validateStatus: () => true,
   };
   await sendRequest(config, jsonData);
+}
+
+/**
+ * Envía una petición POST multipart/form-data (p. ej. documento firmado + metadatos).
+ * El PDF no se adjunta al reporte (solo el nombre del archivo y los campos).
+ */
+export async function sendPostMultipartRequest(endpoint: string, authType: string, formData: FormData, reportableBody: any = null) {
+  const headers = { ...buildAuthConfig(authType), ...formData.getHeaders(), Accept: "application/json" };
+  const config: AxiosRequestConfig = {
+    method: "POST",
+    url: `${process.env.API_BASEURL}${endpoint}`,
+    headers,
+    data: formData,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    validateStatus: () => true,
+  };
+  await sendRequest(config, reportableBody);
 }
 
 /**

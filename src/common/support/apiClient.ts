@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import FormData from "form-data";
 import { apiContext } from "./apiContext";
 import { logApiResponse } from "./logger";
+import { oauthTokenUrl } from "./oauth";
 
 /**
  * Token de ejemplo YA EXPIRADO, reutilizado para el caso de autenticación "expirado".
@@ -81,7 +82,7 @@ async function sendRequest(config: AxiosRequestConfig, requestBody: any = null) 
 export async function sendAuthRequest(clientId: string, clientSecret: string) {
   const config: AxiosRequestConfig = {
     method: "POST",
-    url: `${process.env.API_BASEURL}/oauth/token`,
+    url: oauthTokenUrl(),
     auth: { username: clientId, password: clientSecret },
     data: null,
     validateStatus: () => true,

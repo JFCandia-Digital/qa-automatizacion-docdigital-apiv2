@@ -34,25 +34,23 @@ npm install
 cp .env.example .env      # Windows PowerShell: Copy-Item .env.example .env
 ```
 
-Completa el archivo **`.env`** (es local, está en `.gitignore`, no se sube). Hay dos vías de autenticación:
+Completa el archivo **`.env`** (es local, está en `.gitignore`, no se sube).
+
+**Recomendado en QA:** llená `CLIENT_ID_PDI` / `CLIENT_SECRET_PDI` (y `CLIENT_ID_ARMADA` / `CLIENT_SECRET_ARMADA` para acuse/devolver). Dejá `ACCESS_TOKEN` **vacío**: el hook pide el JWT a `POST /api/v3/oauth/token` y lo renueva solo (~1 h).
 
 ```env
-API_BASEURL=https://api-demodoc.digital.gob.cl/api
-
-# Opción A) Bearer ya emitido (p. ej. de Swagger -> Authorize, o de POST /oauth/token)
+API_BASEURL=https://middleware.docv3.test.digital.gob.cl/api
 ACCESS_TOKEN=
-
-# Opción B) Credenciales OAuth (client_credentials). En demodoc se generan en:
-# Mantenedor de entidades -> (entidad de prueba) -> Habilitación API
 CLIENT_ID_PDI=
 CLIENT_SECRET_PDI=
-
-# ID de un documento existente en la entidad, para los GET de E01 con {id}
+CLIENT_ID_ARMADA=
+CLIENT_SECRET_ARMADA=
+DESTINATARIO_ENTIDAD_ID=210
 DOC_ID_PRUEBA=
+DOC_RECIBIDO_ID=
 ```
 
-> Los tokens de esta API duran ~1 hora. Si un escenario positivo devuelve 401,
-> probablemente el token expiró: renuévalo en `.env`.
+`ACCESS_TOKEN=` solo hace falta si no tenés client_id (p. ej. un bearer pegado de Swagger).
 
 ### Ambientes
 
@@ -68,10 +66,9 @@ Diferencias verificadas entre ambientes (la suite está alineada a **QA**):
 - **Listados de documentos** (`/documentos/creados`, `/creados/enviados`, `/buscar`): en QA
   **requieren paginación** (`pageSize`/`pageNumber`); sin ella el backend responde `502`.
 
-Para obtener un token con las credenciales OAuth:
+Para forzar un token a mano (no hace falta si están los CLIENT_ID/SECRET):
 ```bash
-curl -u "CLIENT_ID:CLIENT_SECRET" -X POST "https://api-demodoc.digital.gob.cl/api/oauth/token"
-# copia el "access_token" del JSON y ponlo en .env como ACCESS_TOKEN
+curl -u "CLIENT_ID:CLIENT_SECRET" -X POST "https://middleware.docv3.test.digital.gob.cl/api/v3/oauth/token"
 ```
 
 ---

@@ -1,8 +1,9 @@
-import { Before, setDefaultTimeout } from "@cucumber/cucumber";
+import { Before, ITestCaseHookParameter, setDefaultTimeout } from "@cucumber/cucumber";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { apiContext } from "../support/apiContext";
+import { resolveValidToken } from "../support/oauth";
 
 setDefaultTimeout(60_000);
 loadDotEnv();
@@ -39,7 +40,7 @@ function loadDotEnv() {
   }
 }
 
-Before(function () {
+Before(async function ({ pickle }: ITestCaseHookParameter) {
   apiContext.token = null;
   apiContext.response = null;
   apiContext.requestTimestamp = null;
@@ -50,4 +51,8 @@ Before(function () {
   apiContext.responseByteLength = undefined;
   apiContext.responseContentType = undefined;
   apiContext.attachData = {};
+
+  const tags = pickle.tags.map((t) => t.name);
+  const asRecipient = tags.includes("@AcusoRecibo") || tags.includes("@Devolver");
+  apiContext.token = (await resolveValidToken(asRecipient)) ?? null;
 });

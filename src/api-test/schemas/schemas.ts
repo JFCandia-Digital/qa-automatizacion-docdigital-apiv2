@@ -2,17 +2,21 @@
  * Estructuras de respuesta esperadas para la APIv2 (DocDigital).
  *
  * NOTA IMPORTANTE (APIv2 vs APIv3):
- * - Las estructuras de ÉXITO están inferidas del contrato del Swagger de APIv2 y del
- *   estilo de APIv3. Como su validación en verde requiere un token válido (aún pendiente
- *   de credenciales demodoc), deben CONFIRMARSE/ajustarse contra una respuesta 200 real.
- *   Por eso los escenarios positivos están etiquetados con @RequiereCredenciales.
- * - Los errores 401 de APIv2 NO son objetos JSON (como en v3) sino texto plano:
- *     · sin token   -> body "401 UNAUTHORIZED" (text/plain)
- *     · token malo  -> body "No autorizado."   (application/json, string)
- *   Por eso los errores se validan con steps de texto y no con estas estructuras.
+ * - La envoltura estándar confirmada contra el ambiente es:
+ *     { status:number, message:string, count:number, timestamp:string, result: ... }
+ *   (revelada por GET /documentos/buscar). Los campos de paginación
+ *   (total_count/total_pages/page) se declaran OPCIONALES porque no todos los
+ *   endpoints los devuelven.
+ * - Las estructuras de "result" de los escenarios positivos están inferidas del
+ *   Swagger y deben CONFIRMARSE contra una respuesta 200 real (por eso esos
+ *   escenarios están etiquetados @RequiereCredenciales).
+ * - Los errores 401 de APIv2 NO son objetos JSON sino texto plano:
+ *     · sin token   -> "401 UNAUTHORIZED"
+ *     · token malo  -> "No autorizado."
+ *   Por eso los errores se validan con steps de texto, no con estas estructuras.
  */
 
-// Envoltura estándar DocDigital (a confirmar contra respuesta real de v2).
+// Envoltura estándar DocDigital (confirmada).
 const baseResponse = {
   status: "number",
   message: "string",
@@ -20,11 +24,11 @@ const baseResponse = {
   timestamp: "string",
 };
 
-const baseResponsePaginado = {
-  ...baseResponse,
-  total_count: "number",
-  total_pages: "number",
-  page: "number",
+// Campos de paginación, opcionales (no todos los endpoints los incluyen).
+const paginacionOpcional = {
+  "total_count?": "number",
+  "total_pages?": "number",
+  "page?": "number",
 };
 
 const baseTipoDocumento = {
@@ -45,49 +49,65 @@ const baseTipoVisacion = {
 const baseEntidad = {
   entidadId: "number",
   entidadNombre: "string",
-  isPrincipal: "boolean",
-  sigla: "string",
-  isActiva: "boolean",
 };
 
 const baseUsuario = {
   usuarioId: "number",
   entidadId: "number",
   entidadNombre: "string",
-  usuarioRun: "string",
-  nombreCompleto: "string",
-  correoInstitucional: "string",
-  usuarioCargo: "string",
 };
 
 export const successStructures = {
+  // Envoltura con result vacío (útil para respuestas sin datos, p. ej. buscar sin coincidencias).
   JSON_RESPONSE_RESULT_SIN_DATOS: {
-    ...baseResponsePaginado,
+    ...baseResponse,
+    ...paginacionOpcional,
     result: [],
   },
 
+  // E05 - Tipos
   JSON_RESPONSE_TIPO_DOCUMENTO: {
     ...baseResponse,
     result: [baseTipoDocumento],
   },
-
   JSON_RESPONSE_TIPO_VISACION: {
     ...baseResponse,
     result: [baseTipoVisacion],
   },
 
+  // E02 - Entidades
   JSON_RESPONSE_ENTIDAD_TOKEN: {
     ...baseResponse,
     result: baseEntidad,
   },
-
   JSON_RESPONSE_ENTIDADES: {
-    ...baseResponsePaginado,
+    ...baseResponse,
+    ...paginacionOpcional,
     result: [baseEntidad],
   },
 
+  // E03 - Usuarios
   JSON_RESPONSE_USUARIOS: {
-    ...baseResponsePaginado,
+    ...baseResponse,
+    ...paginacionOpcional,
     result: [baseUsuario],
+  },
+
+  // E01 - Documentos
+  // Listados (recibidos/creados/creados-enviados/buscar): envoltura + result como array.
+  JSON_RESPONSE_DOCUMENTOS_LISTA: {
+    ...baseResponse,
+    ...paginacionOpcional,
+    result: [],
+  },
+  // Documento por id: envoltura + result como objeto.
+  JSON_RESPONSE_DOCUMENTO: {
+    ...baseResponse,
+    result: "object",
+  },
+  // Estado/historial de un documento: envoltura + result presente.
+  JSON_RESPONSE_DOCUMENTO_ESTADO: {
+    ...baseResponse,
+    result: "object",
   },
 };

@@ -51,7 +51,7 @@ Given(
     for (const [k, v] of Object.entries(campos)) {
       form.append(k, String(v));
     }
-    form.append("documento", fs.createReadStream(this.pdfFirmado.filePath), {
+    form.append("documento", fs.readFileSync(this.pdfFirmado.filePath), {
       filename: this.pdfFirmado.fileName,
       contentType: "application/pdf",
     });

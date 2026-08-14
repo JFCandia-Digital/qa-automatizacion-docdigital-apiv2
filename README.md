@@ -85,7 +85,24 @@ npm run mutaciones       # happy-path de PUT/POST de E01 (@Mutacion)
 > Úsalo solo de forma controlada, con `DOC_RECIBIDO_ID` de un documento recibido
 > desde otra entidad de prueba y destinatario **Test 2019** (nunca instituciones reales).
 
-Se genera un reporte HTML en `reports/report.html`.
+### Reportes
+
+Tras correr cualquier suite, genera un **reporte HTML amigable** (dashboard con
+gráficos, features y pasos):
+
+```bash
+npm run report        # genera el reporte en reports/html/index.html
+npm run report:open   # genera y lo abre en el navegador
+```
+
+Ejemplo de flujo:
+```bash
+npm run apiTest       # ejecuta (produce reports/json/cucumber-report.json)
+npm run report:open   # genera y abre el dashboard
+```
+
+> También queda un HTML básico de Cucumber en `reports/report.html`. La carpeta
+> `reports/` está en `.gitignore` (no se versiona).
 
 ---
 

@@ -12,12 +12,15 @@
     "entidades": "cucumber-js --tags \"@Entidades\" -f summary",
     "usuarios": "cucumber-js --tags \"@Usuarios\" -f summary",
     "documentos": "cucumber-js --tags \"@Documentos and not @Mutacion\" -f summary",
-    "mutaciones": "cucumber-js --tags \"@Mutacion\" -f summary"
+    "mutaciones": "cucumber-js --tags \"@Mutacion\" -f summary",
+    "report": "node scripts/generate-report.js",
+    "report:open": "node scripts/generate-report.js --open"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1",
     "@types/node": "^22.13.10",
     "dotenv": "^16.4.7",
+    "multiple-cucumber-html-reporter": "^3.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },

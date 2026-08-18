@@ -126,36 +126,55 @@ El `client_id` trae el id: `uapi_{entidad_id}_…`.
 
 ## Ejecución
 
+Para la entrega alcanza **`npm run apiTest`**. El resto es opcional o, las mutaciones, solo a mano.
+
+### Suite completa / cortes rápidos
+
 ```bash
-npm run smoke        # negativos de auth; sin credenciales
-npm run negativo     # todos los @Negativo (401)
-npm run apiTest      # suite SEGURA: @API and not @Mutacion — no despacha
-
-npm run tipos
-npm run tiposDocumentos
-npm run tiposVisaciones
-npm run entidades
-npm run usuarios
-npm run documentos   # E01 GET, sin @Mutacion
-
-npm run mutaciones   # SOLO a mano: ingresar / acuse / devolver / atributos
+npm run smoke        # Solo @Smoke: 401 de GET /tipos/documentos/ (inválido / expirado / nulo). Sin credenciales. ¿QA responde?
+npm run negativo     # Todos los @Negativo: 401 de todos los endpoints. Sin CLIENT_ID. No muta datos.
+npm run apiTest      # Entrega. @API menos @Mutacion: GET + validaciones 400/404/401. No despacha. (72 escenarios)
 ```
 
+### Por área
+
+Útiles para acotar. No hace falta mandarlas todas en la entrega.
+
 ```bash
-npx cucumber-js --tags "@FirmadoIngresar and @Mutacion"
-npx cucumber-js --tags "@AcusoRecibo and @Mutacion"
-npx cucumber-js --tags "@Devolver and @Mutacion"
+npm run tipos              # E05 completo: visaciones + tipos de documento (200 y 401)
+npm run tiposDocumentos    # Solo GET /tipos/documentos/
+npm run tiposVisaciones    # Solo GET /tipos/visaciones/
+npm run entidades          # E02: /entidades/ y /entidades/token (200, paginación, 400, 401)
+npm run usuarios           # E03: /usuarios/ (200, paginación, filtros inválidos, 401)
+npm run documentos         # E01 GET + validaciones de PUT/POST, sin happy-path. No ingresa, no acusa, no devuelve.
+```
+
+### Mutaciones (cambian QA — solo a mano)
+
+Cada `@Mutacion` **cambia datos en QA**. No las pongas en el default.
+
+```bash
+npm run mutaciones   # Las cuatro juntas: ingresar + acuse + devolver + atributos. La más agresiva.
+```
+
+Mejor de a una:
+
+```bash
+npx cucumber-js --tags "@FirmadoIngresar and @Mutacion"       # Despacha un documento (PDI → Armada)
+npx cucumber-js --tags "@AcusoRecibo and @Mutacion"           # Acusa DOC_RECIBIDO_ID (tiene que estar pendiente)
+npx cucumber-js --tags "@Devolver and @Mutacion"              # Devuelve ese recibido pendiente
+npx cucumber-js --tags "@AtributosAdicionales and @Mutacion"  # PUT atributos del DOC_ID_PRUEBA (puede 403 sin permiso)
 ```
 
 ### Reportes
 
 ```bash
-npm run apiTest
-npm run report        # reports/html/index.html
-npm run report:open
+npm run apiTest       # Deja el JSON en reports/json/ (además del HTML nativo)
+npm run report        # Dashboard en reports/html/index.html
+npm run report:open   # Lo mismo y lo abre en el navegador
 ```
 
-También: `reports/report.html`. La carpeta `reports/` no se versiona.
+También: `reports/report.html` (HTML simple de Cucumber). La carpeta `reports/` no se versiona.
 
 ---
 
